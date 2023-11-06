@@ -1,0 +1,2 @@
+defmodule TailColors do
+end
