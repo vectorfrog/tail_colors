@@ -1,4 +1,4 @@
-import Config
+# import Config
 
 #     config(:tail_colors, key: :value)
 #
@@ -15,19 +15,3 @@ import Config
 #
 #     import_config("#{Mix.env}.exs")
 #
-config :tail_colors,
-  colors: [
-    "hawthorne",
-    "burgandy",
-    "silver-hawk"
-  ],
-  themed_colors: %{
-    primary: "purple",
-    secondary: "blue",
-    accent: "yellow",
-    info: "sky",
-    success: "green",
-    warning: "orange",
-    error: "red",
-    base: "slate"
-  }
