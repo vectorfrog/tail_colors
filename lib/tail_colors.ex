@@ -213,4 +213,14 @@ defmodule TailColors do
         end
     end
   end
+
+  def clean(class_list, remove_list) when is_bitstring(class_list),
+    do: clean(String.split(class_list, " "), remove_list)
+
+  def clean(class_list, remove_list) when is_bitstring(remove_list),
+    do: clean(class_list, String.split(remove_list, " "))
+
+  def clean(class_list, remove_list) do
+    (class_list -- remove_list) |> Enum.filter(& &1) |> Enum.join(" ")
+  end
 end
