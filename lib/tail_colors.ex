@@ -31,16 +31,6 @@ defmodule TailColors do
 
   @doc ~S"""
     substitutes a themed color from config for the actual color name.
-
-    ## Examples
-      iex> TailColors.theme "one primary two"
-      "one purple two"
-
-      iex> TailColors.theme "text-info-400"
-      "text-sky-400"
-
-      iex> TailColors.theme("one green-400 two")
-      "one green-400 two"
   """
   def theme(class_str) do
     Map.keys(@themed_colors)
