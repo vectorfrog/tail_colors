@@ -93,18 +93,16 @@ defmodule TailColors do
   end
 
   @doc ~S"""
-  takes a list of classNames and a string, and returns true if the string is in the list
+  takes a list of classNames and finds any colors that appear that are not prefixed by a string followed by a -
+  returns a tuple of {color, tint}
 
   ## Examples
 
   iex> TailColors.main_color("thing red something")
-  "red"
+  {"red", nil}
 
-  iex> TailColors.main_color("thing silver-hawk something")
-  "silver-hawk"
-
-  iex> TailColors.main_color("thing silver-hawk-400 something")
-  "silver-hawk-400"
+  iex> TailColors.main_color("thing red-400 something")
+  {"red", 400}
 
   iex> TailColors.main_color("thing something")
   nil
@@ -113,8 +111,12 @@ defmodule TailColors do
 
   def main_color(classes) when is_list(classes) do
     case(common_items(classes, @colors)) do
-      nil -> with_tints(classes)
-      match -> match |> hd
+      nil ->
+        with_tints(classes)
+
+      match ->
+        color = match |> hd
+        {color, nil}
     end
   end
 
@@ -127,10 +129,6 @@ defmodule TailColors do
       {_color, nil} -> false
       {color, tint} -> color in @colors and tint in @tints
     end)
-    |> case do
-      {c, t} -> "#{c}-#{Integer.to_string(t)}"
-      nil -> nil
-    end
   end
 
   defp parse_color_tint(class) do
