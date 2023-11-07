@@ -24,7 +24,7 @@ defmodule TailColors do
             "fuchsia",
             "pink",
             "rose"
-          ] ++ Application.compile_env(:tail_colors, :colors) || []
+          ] ++ (Application.compile_env(:tail_colors, :colors) || [])
 
   @tints [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]
   @themed_colors Application.compile_env(:tail_colors, :themed_colors) || %{}
