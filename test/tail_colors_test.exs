@@ -1,4 +1,5 @@
 defmodule TailColorsTest do
-  use ExUnit.Case
-  # doctest TailColors
+  use ExUnit.Case, async: true
+
+  doctest TailColors, async: true
 end
