@@ -39,7 +39,8 @@ defmodule TailColors do
   end
 
   @doc ~S"""
-  takes a list of classNames and returns the first class that starts with a string followed by a -
+  takes list of classNames and starting text, and finds first instance
+  that matches with a known color and tint, a default value can also be set
 
   ## Examples
 
@@ -58,20 +59,34 @@ defmodule TailColors do
   iex> TailColors.get("thing bg-blue-404 else", "bg")
   nil
 
+  iex> TailColors.get("thing else", "bg", "bg-blue-600")
+  "bg-blue-600"
+
   iex> TailColors.get("thing box else", ["circle", "rounded", "box"])
   "box"
-  """
-  def get(classes, prefix) when is_bitstring(classes), do: get(break(classes), prefix)
 
-  def get(classes, prefix) when is_bitstring(prefix) do
+  iex> TailColors.get("thing else", ["circle", "rounded", "box"])
+  nil
+
+  iex> TailColors.get("thing else", ["circle", "rounded", "box"], "rounded")
+  "rounded"
+  """
+  def get(classes, lookup, default \\ nil)
+  def get(classes, prefix, d) when is_bitstring(classes), do: get(break(classes), prefix, d)
+
+  def get(classes, prefix, default) when is_bitstring(prefix) do
     classes
     |> Enum.find(fn class -> String.starts_with?(class, prefix <> "-") end)
     |> color_tint(prefix)
+    |> case do
+      nil -> default
+      match -> match
+    end
   end
 
-  def get(classes, list) when is_list(list) do
+  def get(classes, list, default) when is_list(list) do
     case common_items(classes, list) do
-      nil -> nil
+      nil -> default
       [h | _] -> h
     end
   end
@@ -90,7 +105,10 @@ defmodule TailColors do
   iex> TailColors.get("thing something", "text", "blue", 600)
   "text-blue-600"
   """
-  def get(class_str, p, c, t) when is_bitstring(class_str), do: get(break(class_str), p, c, t)
+  def get(class_str, p, c, t)
+
+  def get(class_str, p, c, t) when is_bitstring(class_str),
+    do: get(break(class_str), p, c, t)
 
   def get(class_list, prefix, default_color, default_tint) do
     case get(class_list, prefix) do
@@ -162,40 +180,43 @@ defmodule TailColors do
 
   ## Examples
 
-  iex> TailColors.main_color("thing red something")
-  {"red", nil}
+  iex> TailColors.main_color("thing red something", "blue", 700)
+  {"red", 700}
 
-  iex> TailColors.main_color("thing red-400 something")
+  iex> TailColors.main_color("thing red-400 something", "blue", 700)
   {"red", 400}
 
-  iex> TailColors.main_color("thing something")
-  nil
+  iex> TailColors.main_color("thing something", "blue", 700)
+  {"blue", 700}
   """
-  def main_color(classes) when is_bitstring(classes), do: main_color(break(classes))
+  def main_color(classes, c, t) when is_bitstring(classes), do: main_color(break(classes), c, t)
 
-  def main_color(classes) when is_list(classes) do
+  def main_color(classes, default_color, default_tint) when is_list(classes) do
     case(common_items(classes, @colors)) do
       nil ->
-        with_tints(classes)
+        case with_tints(classes, default_tint) do
+          nil -> {default_color, default_tint}
+          tuple -> tuple
+        end
 
       match ->
         color = match |> hd
-        {color, nil}
+        {color, default_tint}
     end
   end
 
-  defp with_tints(classes) do
+  defp with_tints(classes, default_tint) do
     classes
-    |> Enum.map(&parse_color_tint/1)
+    |> Enum.map(&parse_color_tint(&1, default_tint))
     |> Enum.find(fn
       {_color, nil} -> false
       {color, tint} -> color in @colors and tint in @tints
     end)
   end
 
-  defp parse_color_tint(nil), do: nil
+  defp parse_color_tint(nil, _), do: nil
 
-  defp parse_color_tint(class) do
+  defp parse_color_tint(class, default_tint) do
     class
     |> String.split("-")
     |> Enum.reverse()
@@ -207,7 +228,7 @@ defmodule TailColors do
         if str_to_int(h) in @tints do
           {t |> Enum.reverse() |> Enum.join("-"), String.to_integer(h)}
         else
-          {[h | t] |> Enum.reverse() |> Enum.join("-"), nil}
+          {[h | t] |> Enum.reverse() |> Enum.join("-"), default_tint}
         end
     end
   end
@@ -229,6 +250,23 @@ defmodule TailColors do
     end
   end
 
+  defp modify(class_str, mod_fun, args \\ []) do
+    if is_tint?(class_str) do
+      tint = get_tint(class_str)
+      tint = apply(__MODULE__, mod_fun, [tint] ++ args)
+      replace_tint(class_str, tint)
+    else
+      class_str
+    end
+  end
+
+  defp replace_tint(c, tint) when is_integer(tint), do: replace_tint(c, Integer.to_string(tint))
+
+  defp replace_tint(class_str, tint), do: Regex.replace(~r/-\d+$/, class_str, "-" <> tint)
+
+  defp get_tint(str),
+    do: str |> String.split("-") |> Enum.reverse() |> hd() |> String.to_integer()
+
   @doc ~S"""
     moves the tint down the list of tints.
 
@@ -241,7 +279,19 @@ defmodule TailColors do
 
       iex> TailColors.darker(600, 9)
       950
+
+      iex> TailColors.darker("text-green-400", 1)
+      "text-green-500"
+
+      iex> TailColors.darker("text-green-400", 9)
+      "text-green-950"
+
+      iex> TailColors.darker("not-a-tint", 1)
+      "not-a-tint"
   """
+  def darker(class_str, steps) when is_bitstring(class_str),
+    do: modify(class_str, :darker, [steps])
+
   def darker(tint, steps), do: step(tint, steps)
 
   @doc ~S"""
@@ -256,7 +306,19 @@ defmodule TailColors do
 
       iex> TailColors.lighter(600, 9)
       50
+
+      iex> TailColors.lighter("text-green-400", 1)
+      "text-green-300"
+
+      iex> TailColors.lighter("text-green-400", 9)
+      "text-green-50"
+
+      iex> TailColors.lighter("not-a-tint", 1)
+      "not-a-tint"
   """
+  def lighter(class_str, steps) when is_bitstring(class_str),
+    do: modify(class_str, :lighter, [steps])
+
   def lighter(tint, steps), do: step(tint, -1 * steps)
 
   defp step(tint, steps) when is_integer(tint) and is_integer(tint) do
@@ -285,6 +347,9 @@ defmodule TailColors do
   def clean(class_list, remove_list) do
     (class_list -- remove_list) |> Enum.filter(& &1) |> Enum.join(" ")
   end
+
+  def invert(class_str) when is_bitstring(class_str),
+    do: modify(class_str, :invert)
 
   def invert(nil), do: nil
   def invert(50), do: 400
