@@ -1,6 +1,4 @@
 defmodule TailColors do
-  @compile :export_all
-
   @colors [
             "slate",
             "gray",
@@ -53,15 +51,108 @@ defmodule TailColors do
 
   iex> TailColors.get("thing else", "bg")
   nil
+
+  iex> TailColors.get("thing bg-monster else", "bg")
+  nil
+
+  iex> TailColors.get("thing bg-blue-404 else", "bg")
+  nil
+
+  iex> TailColors.get("thing box else", ["circle", "rounded", "box"])
+  "box"
   """
-  def get(classes, prefix) when is_bitstring(classes), do: get(String.split(classes, " "), prefix)
+  def get(classes, prefix) when is_bitstring(classes), do: get(break(classes), prefix)
 
   def get(classes, prefix) when is_bitstring(prefix) do
     classes
     |> Enum.find(fn class -> String.starts_with?(class, prefix <> "-") end)
+    |> color_tint(prefix)
   end
 
-  def get(classes, list) when is_list(list), do: common_items(classes, list)
+  def get(classes, list) when is_list(list) do
+    case common_items(classes, list) do
+      nil -> nil
+      [h | _] -> h
+    end
+  end
+
+  defp color_tint(nil, _), do: nil
+
+  defp color_tint(class, prefix) do
+    if is_color?(class, prefix) and is_tint?(class) do
+      class
+    else
+      nil
+    end
+  end
+
+  defp is_color?(class, prefix) do
+    case String.split(class, "-") do
+      [^prefix, color] -> color in @colors
+      [^prefix, color, _] -> color in @colors
+      _ -> false
+    end
+  end
+
+  defp is_tint?(class) do
+    with [str | _] <- String.split(class, "-") |> Enum.reverse(),
+         {int, _} <- Integer.parse(str) do
+      int in @tints
+    else
+      _ -> false
+    end
+  end
+
+  @doc """
+  takes a list of classNames and matches the first class with the prefix and returns a color tuple
+
+  ## Examples
+
+  iex> TailColors.get_tuple("thing text-red-400 something", "text")
+  {"text-red", 400}
+
+  iex> TailColors.get_tuple("thing text-red something", "text")
+  {"text-red", nil}
+
+  iex> TailColors.get_tuple("thing something", "text")
+  nil
+  """
+  def get_tuple(class_str, prefix) when is_bitstring(class_str),
+    do: get_tuple(break(class_str), prefix)
+
+  def get_tuple(class_list, prefix) when is_list(class_list) and is_bitstring(prefix) do
+    get(class_list, prefix)
+    |> parse_color_tint()
+  end
+
+  @doc """
+  takes a list of classNames and matches the first class with the prefix and returns the match or default values
+
+  ## Examples
+
+  iex> TailColors.get("thing text-red-400 something", "text", "blue", 600)
+  "text-red-400"
+
+  iex> TailColors.get("thing text-red something", "text", "blue", 600)
+  "text-red-600", nil
+
+  iex> TailColors.get("thing something", "text", "blue", 600)
+  "text-blue-600"
+  """
+  def get(class_str, p, c, t) when is_bitstring(class_str), do: get(break(class_str), p, c, t)
+
+  def get(class_list, prefix, default_color, default_tint) do
+    case get(class_list, prefix) do
+      nil ->
+        "#{prefix}-#{default_color}-#{default_tint}"
+
+      match ->
+        parse_color_tint(match)
+        |> IO.inspect(label: "parse")
+    end
+  end
+
+  defp break(class_list), do: String.split(class_list, ~r/\s+/)
 
   @doc ~S"""
   takes a list of classNames and a string, and returns true if the string is in the list
@@ -75,7 +166,7 @@ defmodule TailColors do
   false
   """
   def has?(classes, str) when is_bitstring(classes),
-    do: has?(String.split(classes, " "), str)
+    do: has?(break(classes), str)
 
   def has?(classes, str) when is_bitstring(str) do
     classes
@@ -97,7 +188,7 @@ defmodule TailColors do
   iex> TailColors.main_color("thing something")
   nil
   """
-  def main_color(classes) when is_bitstring(classes), do: main_color(String.split(classes, " "))
+  def main_color(classes) when is_bitstring(classes), do: main_color(break(classes))
 
   def main_color(classes) when is_list(classes) do
     case(common_items(classes, @colors)) do
@@ -110,8 +201,6 @@ defmodule TailColors do
     end
   end
 
-  defp with_tints(classes) when is_bitstring(classes), do: with_tints(String.split(classes, " "))
-
   defp with_tints(classes) do
     classes
     |> Enum.map(&parse_color_tint/1)
@@ -120,6 +209,8 @@ defmodule TailColors do
       {color, tint} -> color in @colors and tint in @tints
     end)
   end
+
+  defp parse_color_tint(nil), do: nil
 
   defp parse_color_tint(class) do
     class
@@ -203,12 +294,25 @@ defmodule TailColors do
   end
 
   def clean(class_list, remove_list) when is_bitstring(class_list),
-    do: clean(String.split(class_list, " "), remove_list)
+    do: clean(break(class_list), remove_list)
 
   def clean(class_list, remove_list) when is_bitstring(remove_list),
-    do: clean(class_list, String.split(remove_list, " "))
+    do: clean(class_list, break(remove_list))
 
   def clean(class_list, remove_list) do
     (class_list -- remove_list) |> Enum.filter(& &1) |> Enum.join(" ")
   end
+
+  def invert(nil), do: nil
+  def invert(50), do: 400
+  def invert(100), do: 500
+  def invert(200), do: 600
+  def invert(300), do: 700
+  def invert(400), do: 50
+  def invert(500), do: 50
+  def invert(600), do: 50
+  def invert(700), do: 100
+  def invert(800), do: 100
+  def invert(900), do: 200
+  def invert(950), do: 300
 end
