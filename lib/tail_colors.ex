@@ -76,55 +76,6 @@ defmodule TailColors do
     end
   end
 
-  defp color_tint(nil, _), do: nil
-
-  defp color_tint(class, prefix) do
-    if is_color?(class, prefix) and is_tint?(class) do
-      class
-    else
-      nil
-    end
-  end
-
-  defp is_color?(class, prefix) do
-    case String.split(class, "-") do
-      [^prefix, color] -> color in @colors
-      [^prefix, color, _] -> color in @colors
-      _ -> false
-    end
-  end
-
-  defp is_tint?(class) do
-    with [str | _] <- String.split(class, "-") |> Enum.reverse(),
-         {int, _} <- Integer.parse(str) do
-      int in @tints
-    else
-      _ -> false
-    end
-  end
-
-  @doc """
-  takes a list of classNames and matches the first class with the prefix and returns a color tuple
-
-  ## Examples
-
-  iex> TailColors.get_tuple("thing text-red-400 something", "text")
-  {"text-red", 400}
-
-  iex> TailColors.get_tuple("thing text-red something", "text")
-  {"text-red", nil}
-
-  iex> TailColors.get_tuple("thing something", "text")
-  nil
-  """
-  def get_tuple(class_str, prefix) when is_bitstring(class_str),
-    do: get_tuple(break(class_str), prefix)
-
-  def get_tuple(class_list, prefix) when is_list(class_list) and is_bitstring(prefix) do
-    get(class_list, prefix)
-    |> parse_color_tint()
-  end
-
   @doc """
   takes a list of classNames and matches the first class with the prefix and returns the match or default values
 
@@ -134,7 +85,7 @@ defmodule TailColors do
   "text-red-400"
 
   iex> TailColors.get("thing text-red something", "text", "blue", 600)
-  "text-red-600", nil
+  "text-red-600"
 
   iex> TailColors.get("thing something", "text", "blue", 600)
   "text-blue-600"
@@ -147,8 +98,40 @@ defmodule TailColors do
         "#{prefix}-#{default_color}-#{default_tint}"
 
       match ->
-        parse_color_tint(match)
-        |> IO.inspect(label: "parse")
+        if int_ending?(match) do
+          match
+        else
+          "#{match}-#{default_tint}"
+        end
+    end
+  end
+
+  defp color_tint(nil, _), do: nil
+
+  defp color_tint(class, prefix) do
+    cond do
+      !is_color?(class, prefix) -> nil
+      int_ending?(class) and !is_tint?(class) -> nil
+      true -> class
+    end
+  end
+
+  defp is_color?(class, prefix) do
+    case String.split(class, "-") do
+      [^prefix, color] -> color in @colors
+      [^prefix, color, _] -> color in @colors
+      _ -> false
+    end
+  end
+
+  defp int_ending?(c), do: String.match?(c, ~r/.*-\d+/)
+
+  defp is_tint?(class) do
+    with [str | _] <- String.split(class, "-") |> Enum.reverse(),
+         {int, _} <- Integer.parse(str) do
+      int in @tints
+    else
+      _ -> false
     end
   end
 
