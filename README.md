@@ -1,7 +1,30 @@
 # TailColors
 
-This library is a collection of useful functions for working with tailwind colors.  It is meant to be a helper library if you're building out your own custom components that utilize class names to key logic off of.  Essentially, I wanted to build my own version of daisyUI, using my own components, but passing style information through the class string, instead of as props.
+This library is a collection of useful functions for working with tailwind colors.  It is meant to be a helper library if you're building out your own custom components that utilizes class names to key logic off of.  Essentially, I wanted to build my own version of [DaisyUI](https://daisyui.com/components/button/), using my own components, so I can pass style information through the class string, instead of as props.
 
+The main advantage of this approach is that you can create complex components with nested elements, and then easily pass in style overrides for those NESTED elements in the class string, instead of having to build out dozens of props. or tons of slots.  Also, it keeps all styling information in the class attribute.  This makes it easier to see what styles are being applied. Props then can be used for data, and slots can be used for content.
+
+i.e.
+```elixir
+<.hero class="bg-blue-500 panel-white btn-xl btn-success btn-full">Hello</.hero>
+```
+vs
+```elixir
+<.hero class="bg-blue-500">
+  <:panel>
+    <div class="bg-white">
+      Hello
+    </div>
+  </:panel>
+    <:action>
+      <.button class="bg-green-700 text-xl w-full"></.button>
+    </:action>
+  Hello</.hero>
+```
+vs
+```elixir
+<.hero class="bg-blue-500" panel_color="white" btn_color="bg-green-700" btn_size="xl" btn_width="full">Hello</.hero>
+```
 
 ## Installation
 
@@ -161,6 +184,12 @@ invert("text-red-100")
 "text-red-500"
 ```
 The `invert/1` function is primarily used to invert the text color for better readability.
+
+At the bottom of the `parse/1` function, there are several `clean` functions.  These functions remove classnames from the class string to avoid polluting the class string.  For instance, once we've identified the "outline" style, we don't want "outline" to appear in our class string, on the off chance that somewhere else, there is an "outline" css class.  However, we may want that, so you can choose to use the clean functions or not.
+
+`clean/2` takes the class string, and a list of classnames to remove from the class string.  `clean_prefix/2` takes the class string, and a list of prefixes to remove from the class string.  `clean_colors/1` takes the class string, and removes any stand alone color classes from the class string.
+
+I would recommend using the `clean_prefix/2` function if you are using any interpolated classes, such as "hover:bg-red-600" where the color and tint are provided in the "bg-red-600" in the class name.  Otherwise, you'll end up with "hover:bg-red-600 bg-red-600" in your class string, which will cause the background to always be red! instead of just on hover.
 
 ## HELP! I'm not seeing my changes take effect!
 
