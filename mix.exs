@@ -4,7 +4,9 @@ defmodule TailColors.Mixfile do
   @name :tail_colors
   @version "0.1.1"
 
-  @deps []
+  @deps [
+    {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
+  ]
 
   # ------------------------------------------------------------
 
