@@ -348,6 +348,21 @@ defmodule TailColors do
     (class_list -- remove_list) |> Enum.filter(& &1) |> Enum.join(" ")
   end
 
+  def clean_prefix(class_list, remove_list) when is_bitstring(class_list),
+    do: clean_prefix(break(class_list), remove_list)
+
+  def clean_prefix(class_list, remove_list) when is_bitstring(remove_list),
+    do: clean_prefix(class_list, break(remove_list))
+
+  def clean_prefix(class_list, remove_list) do
+    class_list
+    |> Enum.filter(fn class ->
+      Enum.any?(remove_list, fn remove_class ->
+        !String.starts_with?(class, remove_class <> "-")
+      end)
+    end)
+  end
+
   def invert(class_str) when is_bitstring(class_str),
     do: modify(class_str, :invert)
 
