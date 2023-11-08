@@ -4,11 +4,9 @@ defmodule TailColors.Mixfile do
   @name :tail_colors
   @version "0.1.1"
 
-  @deps [
-    # { :earmark, ">0.1.5" },                      
-    # { :ex_doc,  "1.2.3", only: [ :dev, :test ] }
-    # { :my_app:  path: "../my_app" },
-  ]
+  @deps []
+
+  @description "Helper functions for working with tailwind css color classes when building out Phoenix.Components/LiveComponents"
 
   # ------------------------------------------------------------
 
@@ -20,7 +18,11 @@ defmodule TailColors.Mixfile do
       version: @version,
       elixir: ">= 1.14.2",
       deps: @deps,
-      build_embedded: in_production
+      build_embedded: in_production,
+      descrption: @description,
+      package: package(),
+      name: "TailColors",
+      source_url: "https://github.com/vectorfrog/tail_colors"
     ]
   end
 
@@ -30,6 +32,15 @@ defmodule TailColors.Mixfile do
       extra_applications: [
         :logger
       ]
+    ]
+  end
+
+  def package() do
+    [
+      files:
+        ~w(lib priv .formatter.exs mix.exs README* readme* LICENSE* license* CHANGELOG* changelog* src),
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/vectorfrog/tail_colors"}
     ]
   end
 end

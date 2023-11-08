@@ -1,6 +1,6 @@
 # TailColors
 
-This library is a collection of useful functions for working with tailwind colors.  It is meant to be a helper library if you're building out your own custom components that utilizes class names to key logic off of.  Essentially, I wanted to build my own version of [DaisyUI](https://daisyui.com/components/button/), using my own components, so I can pass style information through the class string, instead of as props.
+This library is a collection of useful functions for working with tailwind colors.  It is meant to be a helper library if you're building out your own custom components that utilizes class names to key logic off of.  The paradigm is heavily influenced by [DaisyUI](https://daisyui.com/components/button/), however, you must create the components.
 
 The main advantage of this approach is that you can create complex components with nested elements, and then easily pass in style overrides for those NESTED elements in the class string, instead of having to build out dozens of props. or tons of slots.  Also, it keeps all styling information in the class attribute.  This makes it easier to see what styles are being applied. Props then can be used for data, and slots can be used for content.
 
