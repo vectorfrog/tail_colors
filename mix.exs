@@ -17,8 +17,8 @@ defmodule TailColors.Mixfile do
       elixir: ">= 1.14.2",
       deps: @deps,
       build_embedded: in_production,
-      descrption:
-        "Helper functions for working with tailwind css color classes when building out Phoenix.Components/LiveComponents",
+      description:
+        "Helper functions for working with tailwind css color classes when building out Phoenix.Components/LiveComponents in a DaisyUI opinionated way",
       package: package(),
       name: "TailColors",
       source_url: "https://github.com/vectorfrog/tail_colors"
