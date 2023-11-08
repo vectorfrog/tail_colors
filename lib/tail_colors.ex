@@ -357,9 +357,19 @@ defmodule TailColors do
   def clean_prefix(class_list, remove_list) do
     class_list
     |> Enum.filter(fn class ->
-      Enum.any?(remove_list, fn remove_class ->
-        !String.starts_with?(class, remove_class <> "-")
+      !Enum.any?(remove_list, fn remove_class ->
+        String.starts_with?(class, remove_class <> "-")
       end)
+    end)
+    |> Enum.join(" ")
+  end
+
+  def clean_colors(c) when is_bitstring(c), do: clean_colors(break(c))
+
+  def clean_colors(class_list) do
+    class_list
+    |> Enum.filter(fn class ->
+      !Enum.any?(@colors, fn color -> String.starts_with?(class, color <> "-") end)
     end)
   end
 
