@@ -1,4 +1,7 @@
 defmodule TailColors do
+  @moduledoc """
+  Helper functions for working with tailwind classes
+  """
   @colors [
             "slate",
             "gray",
@@ -28,7 +31,7 @@ defmodule TailColors do
   @themed_colors Application.compile_env(:tail_colors, :themed_colors) || %{}
 
   @doc ~S"""
-    substitutes a themed color from config for the actual color name.
+  substitutes a themed color from config for the actual color name.
   """
   def theme(class_str) do
     Map.keys(@themed_colors)
@@ -41,46 +44,77 @@ defmodule TailColors do
   @doc ~S"""
   takes list of classNames and starting text, and finds first instance
   that matches with a known color and tint, a default value can also be set
-
   ## Examples
+      iex> TailColors.get_color("thing text-red-400 something", "text")
+      "text-red-400"
 
-  iex> TailColors.get("thing text-red-400 something", "text")
-  "text-red-400"
+      iex> TailColors.get_color("thing bg-blue", "bg")
+      "bg-blue"
 
-  iex> TailColors.get("thing bg-blue", "bg")
-  "bg-blue"
+      iex> TailColors.get_color("thing else", "bg")
+      nil
 
-  iex> TailColors.get("thing else", "bg")
-  nil
+      iex> TailColors.get_color("thing bg-monster else", "bg")
+      nil
 
-  iex> TailColors.get("thing bg-monster else", "bg")
-  nil
+      iex> TailColors.get_color("thing bg-blue-404 else", "bg")
+      nil
 
-  iex> TailColors.get("thing bg-blue-404 else", "bg")
-  nil
-
-  iex> TailColors.get("thing else", "bg", "bg-blue-600")
-  "bg-blue-600"
-
-  iex> TailColors.get("thing box else", ["circle", "rounded", "box"])
-  "box"
-
-  iex> TailColors.get("thing else", ["circle", "rounded", "box"])
-  nil
-
-  iex> TailColors.get("thing else", ["circle", "rounded", "box"], "rounded")
-  "rounded"
+      iex> TailColors.get_color("thing else", "bg", "bg-blue-600")
+      "bg-blue-600"
   """
-  def get(classes, lookup, default \\ nil)
-  def get(classes, prefix, d) when is_bitstring(classes), do: get(break(classes), prefix, d)
+  def get_color(classes, lookup, default \\ nil)
 
-  def get(classes, prefix, default) when is_bitstring(prefix) do
+  def get_color(classes, p, d) when is_bitstring(classes), do: get_color(break(classes), p, d)
+
+  def get_color(classes, prefix, default) when is_bitstring(prefix) do
     classes
     |> Enum.find(fn class -> String.starts_with?(class, prefix <> "-") end)
     |> color_tint(prefix)
     |> case do
       nil -> default
       match -> match
+    end
+  end
+
+  @doc ~S"""
+  takes list of classNames and prefix text or list of options, and finds first instance that matches,
+  a default value can also be set
+
+  ## Examples
+      iex> TailColors.get("thing rounded something", "rounded")
+      "rounded"
+
+      iex> TailColors.get("thing rounded-xl something", "rounded")
+      "rounded-xl"
+
+      iex> TailColors.get("thing else", "rounded")
+      nil
+
+      iex> TailColors.get("thing else", "rounded", "rounded-md")
+      "rounded-md"
+
+      iex> TailColors.get("thing box else", ["circle", "rounded", "box"])
+      "box"
+
+      iex> TailColors.get("thing else", ["circle", "rounded", "box"])
+      nil
+
+      iex> TailColors.get("thing else", ["circle", "rounded", "box"], "rounded")
+      "rounded"
+  """
+
+  def get(classes, lookup, default \\ nil)
+  def get(classes, prefix, d) when is_bitstring(classes), do: get(break(classes), prefix, d)
+
+  def get(classes, prefix, default) when is_bitstring(prefix) do
+    if prefix in classes do
+      prefix
+    else
+      case first_prefix(classes, prefix) do
+        nil -> default
+        match -> match
+      end
     end
   end
 
@@ -91,20 +125,22 @@ defmodule TailColors do
     end
   end
 
-  @doc """
+  defp first_prefix(cl, prefix), do: Enum.find(cl, &String.starts_with?(&1, prefix <> "-"))
+
+  @doc ~S"""
   takes a list of classNames and matches the first class with the prefix and returns the match or default values
 
   ## Examples
+      iex> TailColors.get("thing text-red-400 something", "text", "blue", 600)
+      "text-red-400"
 
-  iex> TailColors.get("thing text-red-400 something", "text", "blue", 600)
-  "text-red-400"
+      iex> TailColors.get("thing text-red something", "text", "blue", 600)
+      "text-red-600"
 
-  iex> TailColors.get("thing text-red something", "text", "blue", 600)
-  "text-red-600"
-
-  iex> TailColors.get("thing something", "text", "blue", 600)
-  "text-blue-600"
+      iex> TailColors.get("thing something", "text", "blue", 600)
+      "text-blue-600"
   """
+
   def get(class_str, p, c, t)
 
   def get(class_str, p, c, t) when is_bitstring(class_str),
@@ -159,12 +195,11 @@ defmodule TailColors do
   takes a list of classNames and a string, and returns true if the string is in the list
 
   ## Examples
+      iex> TailColors.has?("thing text-red-400 something", "something")
+      true
 
-  iex> TailColors.has?("thing text-red-400 something", "something")
-  true
-
-  iex> TailColors.has?("thing bg-blue", "something")
-  false
+      iex> TailColors.has?("thing bg-blue", "something")
+      false
   """
   def has?(classes, str) when is_bitstring(classes),
     do: has?(break(classes), str)
@@ -179,15 +214,14 @@ defmodule TailColors do
   returns a tuple of {color, tint}
 
   ## Examples
+      iex> TailColors.main_color("thing red something", "blue", 700)
+      {"red", 700}
 
-  iex> TailColors.main_color("thing red something", "blue", 700)
-  {"red", 700}
+      iex> TailColors.main_color("thing red-400 something", "blue", 700)
+      {"red", 400}
 
-  iex> TailColors.main_color("thing red-400 something", "blue", 700)
-  {"red", 400}
-
-  iex> TailColors.main_color("thing something", "blue", 700)
-  {"blue", 700}
+      iex> TailColors.main_color("thing something", "blue", 700)
+      {"blue", 700}
   """
   def main_color(classes, c, t) when is_bitstring(classes), do: main_color(break(classes), c, t)
 
@@ -268,9 +302,9 @@ defmodule TailColors do
     do: str |> String.split("-") |> Enum.reverse() |> hd() |> String.to_integer()
 
   @doc ~S"""
-    moves the tint down the list of tints.
+  moves the tint down the list of tints.
 
-    ## Examples
+  ## Examples
       iex> TailColors.darker(600, 1)
       700
 
@@ -295,9 +329,8 @@ defmodule TailColors do
   def darker(tint, steps), do: step(tint, steps)
 
   @doc ~S"""
-    moves the tint up the list of tints.
-
-    ## Examples
+  moves the tint up the list of tints.
+  ## Examples
       iex> TailColors.lighter(600, 1)
       500
 
@@ -338,21 +371,39 @@ defmodule TailColors do
     end
   end
 
-  def clean(class_list, remove_list) when is_bitstring(class_list),
-    do: clean(break(class_list), remove_list)
+  @doc ~S"""
+  takes a list of classNames and a list of classes to remove, and then removes those classes if they appear in the classNames
 
-  def clean(class_list, remove_list) when is_bitstring(remove_list),
-    do: clean(class_list, break(remove_list))
+  ## Examples
+      iex> TailColors.clean("thing needle something", "needle")
+      "thing something"
+      iex> TailColors.clean("thing something", "needle")
+      "thing something"
+      iex> TailColors.clean("thing needle haystack something", "needle haystack")
+      "thing something"
+  """
+  def clean(class_list, remove_list)
+  def clean(cl, rl) when is_bitstring(cl), do: clean(break(cl), rl)
+  def clean(cl, rl) when is_bitstring(rl), do: clean(cl, break(rl))
 
   def clean(class_list, remove_list) do
     (class_list -- remove_list) |> Enum.filter(& &1) |> Enum.join(" ")
   end
 
-  def clean_prefix(class_list, remove_list) when is_bitstring(class_list),
-    do: clean_prefix(break(class_list), remove_list)
+  @doc ~S"""
+  takes a list of classNames and a list of classes to remove, and then removes those classes if they appear in the classNames
 
-  def clean_prefix(class_list, remove_list) when is_bitstring(remove_list),
-    do: clean_prefix(class_list, break(remove_list))
+  ## Examples
+      iex> TailColors.clean_prefix("thing bg-blue-500 something", "bg")
+      "thing something"
+      iex> TailColors.clean_prefix("thing something", "bg")
+      "thing something"
+      iex> TailColors.clean_prefix("thing bg-green-200 text-red-600 something", "bg text")
+      "thing something"
+  """
+  def clean_prefix(class_list, remove_list)
+  def clean_prefix(cl, rl) when is_bitstring(cl), do: clean_prefix(break(cl), rl)
+  def clean_prefix(cl, rl) when is_bitstring(rl), do: clean_prefix(cl, break(rl))
 
   def clean_prefix(class_list, remove_list) do
     class_list
@@ -364,18 +415,43 @@ defmodule TailColors do
     |> Enum.join(" ")
   end
 
+  @doc ~S"""
+  takes a list of classNames and removes any colors that appear that do not follow the tailwind color struction prefix-color-tint
+  #
+  ## Examples
+      iex> TailColors.clean_colors("thing blue something")
+      "thing something"
+      iex> TailColors.clean_colors("thing something")
+      "thing something"
+      iex> TailColors.clean_colors("thing blue red something")
+      "thing something"
+  """
+  def clean_colors(class_list)
   def clean_colors(c) when is_bitstring(c), do: clean_colors(break(c))
 
   def clean_colors(class_list) do
     class_list
     |> Enum.filter(fn class ->
-      !Enum.any?(@colors, fn color -> String.starts_with?(class, color <> "-") end)
+      !Enum.any?(@colors, fn color -> String.starts_with?(class, color <> "") end)
     end)
+    |> Enum.join(" ")
   end
 
-  def invert(class_str) when is_bitstring(class_str),
-    do: modify(class_str, :invert)
-
+  @doc ~S"""
+  takes a either a tint, or a color class, and returns a tint that is easier to read on that background
+  #
+  ## Examples
+      iex> TailColors.invert(200)
+      600
+      iex> TailColors.invert("bg-blue-600")
+      "bg-blue-50"
+      iex> TailColors.invert(nil)
+      nil
+      iex> TailColors.invert("weirdo")
+      "weirdo"
+  """
+  def invert(class_str)
+  def invert(str) when is_bitstring(str), do: modify(str, :invert)
   def invert(nil), do: nil
   def invert(50), do: 400
   def invert(100), do: 500

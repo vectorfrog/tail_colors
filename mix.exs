@@ -2,7 +2,7 @@ defmodule TailColors.Mixfile do
   use Mix.Project
 
   @name :tail_colors
-  @version "0.1.1"
+  @version "0.2.0"
 
   @deps [
     {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
@@ -23,7 +23,11 @@ defmodule TailColors.Mixfile do
         "Helper functions for working with tailwind css color classes when building out Phoenix.Components/LiveComponents in a DaisyUI opinionated way",
       package: package(),
       name: "TailColors",
-      source_url: "https://github.com/vectorfrog/tail_colors"
+      source_url: "https://github.com/vectorfrog/tail_colors",
+      docs: [
+        main: "TailColors",
+        extras: ["README.md"]
+      ]
     ]
   end
 
