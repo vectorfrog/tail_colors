@@ -21,7 +21,7 @@ vs
 ```
 vs
 ```elixir
-<.hero class="bg-blue-500" panel_color="white" btn_color="bg-green-700" btn_size="xl" btn_width="full">Hello</.hero>
+<.hero class="bg-blue-500" panel_color="white" btn_color="bg-success" btn_size="xl" btn_width="full">Hello</.hero>
 ```
 ## Installation
 
@@ -32,27 +32,20 @@ tail_colors: "~> 0.1.0"
 ```
 ## Config
 
-First configure tail_color schemes in config.exs
-```elixir
-import Config
-
-config :tail_colors,
-  primary: "purple",
-  secondary: "blue",
-  accent: "yellow",
-  info: "sky",
-  success: "green",
-  warning: "orange",
-  error: "red",
-```
-If you are using custom colors in your tailwind.config.js file, you can add those colors so they will identified as colors to identify in your class names:
+If you are using custom colors in your tailwind.config.js file, (and I strongly recommend that you do and use themeable names like "primary", "secondary", "accent", "success", "error"...etc) you can add those colors so they will identified as colors to identify in your class names:
 ```elixir
 import Config
 
 config :tail_colors,
   colors: [
-    "hawthorne",
-    "midnight"
+    "primary",
+    "secondary",
+    "accent",
+    "info",
+    "success",
+    "warning",
+    "error",
+    "base"
   ],
 ```
 
@@ -61,23 +54,16 @@ config :tail_colors,
 TailColors provides a few functions to help you build out your own components where you pass in data through the class attribute.  For example, if you want to build a button component, you can pass in the color, style, and size of the button through the class attribute, and then use TailColors to parse out the data, and modify the classes.
 
 #### home_live.html.leex
-
 ```
-<.button class="primary box xl">Hello</.button>
+<.button class="box xl">Hello</.button>
 ```
-
-Notice how we are passing in the "primary" class.  TailColors will automatically fetch primary color from the config file.
-
 #### lib/my_app_web/components/button.ex
-
 ```
 defmodule MyApp.Button do
   use Phoenix.Component
   import TailColors
   @sizes ~w"xs sm md lg xl"
   @styles ~w"classic outline"
-  @default_color Map.get(Application.compile_env(:tail_colors, :themed_colors), :primary)
-  @default_tint 700
 
   attr :class, :string, default: ""
   attr :rest, :gobal
@@ -91,12 +77,10 @@ defmodule MyApp.Button do
   end
 
   defp parse_class(class_str) do
-    class_str = theme(class_str)
     l = String.split(class_str, ~r/\s+/)
 
     size = get(l, @sizes, "md")
     style = get(l, @styles, "classic")
-    {color, tint} = main_color(l, @default_color, @default_tint)
 
     [case size do
       "xs" -> "px-2.5 py-1.5 text-xs"
@@ -109,18 +93,18 @@ defmodule MyApp.Button do
     case style do
       "classic" ->
         [
-          get(l, "bg", color, tint),
-          "hover:#{get(l, "bg", color, tint) |> darker(2)}",
-          get(l, "ring", color, tint),
-          get(l, "text", color, invert(tint))
+          get_color(l, "bg", "bg-red-600"),
+          get_color(l, "hover:bg", "bg-red-700"),
+          get_color(l, "ring", "ring-red-700"),
+          get_color(l, "text", "text-white")
         ]
-        "outline" ->
-          [
-            "hover:#{get(l, "bg", color, tint)} hover:#{get(l, "text", color, tint) |> invert()}",
-            get(l, "ring", color, tint),
-            "border #{get(l, "border", color, tint)}",
-            get(l, "text", color, tint)
-          ]
+      "outline" ->
+        [
+          get_color(l, "hover:bg", "hover:bg-red-50"),
+          get_color(l, "text", "text-red-600"),
+          get_color(l, "ring", "ring-red-700"),
+          "border #{get_color(l, "border", "border-red-600")}",
+        ]
     end
     ++ [
           clean(class_str, @sizes ++ @styles)
@@ -135,72 +119,21 @@ OK, let's walk through that together.  At the top of the module, we import TailC
 
 Next, we have a standard button component, however, in the class attribute, we're calling the parse_class function, and passing in the class string.
 
-The parse_class function is where all of our major logic lies.  The first thing that we do is we replace the class_str with the theme(class_str).  This function simply looks through all the classes and replaces any themed_colors with their corresponding values.  So in the example above, since we set primary to purple in the config, the class_str would be replaced with "purple box xl". `Please note`: this performs string replace on every theme_color, performance could become an issue, use with caution.
-
-Next, we create a list out of the class_str.  Technically speaking, each of the functions in TailColors can accept either a string or a list, however, since all the functions just convert the string into a list anyways, we'll save ourselves some cpu's and just pass in the list.
+The parse_class function is where all of our major logic lies. We create a list out of the class_str.  Technically speaking, each of the functions in TailColors can accept either a string or a list, however, since all the functions just convert the string into a list anyways, we'll save ourselves some cpu's and just pass in the list.
 
 This is where things start to get interesting.  We use the `TailColors.get/3` function to find out if any of the known sizes defined in *@sizes is present in the class list.  If it is, we set the size variable to that value, otherwise, we set it to the default value that's passed in the third parameter, in this case: "md".  We do the same thing for style, except we look for the values in @styles.
 
-The `TailColors.main_color/3` function looks through the class list for any defined colors, either default colors that come with tailwind, or custom colors that you've defined in your tailwind.config.js file.  If it finds a color, it returns the color, and the tint in a tuple.  If it doesn't find a color, it returns the default_color and default_tint which are passed in as the second and third arguments.
+Next, we start building out the list of strings that we are going to return.  The `case` statement around size is pretty self-explanatory.  However, the case for style is way more interesting.
 
-in the example above, the only color that was passed in was 'primary', which was replaced by "purple" by the theme function, and there's no tint so the default tint is used, which in this case is `700`.  If a tint was passed in, such as `primary-200`, then the `200` would have been returned as the tint.
+`TailColors.get_color/3` function takes the class list, a prefix to use as an identifier and a default value.  The function will then search through the class list looking for any classes that start with the prefix, if it finds the prefix, it returns the full class name: `prefix-color-tint`.  If it doesn't find the prefix, it returns the default value.  Here are a few examples:
 
-Next, we start building out the list of strings that we are going to return.  Phoenix will convert this list into a string, so it will be an accepted class attribute.  The `case` statement around size is pretty self-explanatory.  However, the case for style is way more interesting.
-
-`TailColors.get/4` function takes the class list, a prefix to use as an identifier and a default value to use for the color and the tint.  The function will then search through the class list looking for any classes that start with the prefix, if it finds the prefix, it returns the full class name: `prefix-color-tint`.  If it doesn't find the prefix, it returns the default value with the prefix.  Here are a few examples:
-```elixir
-get(~w"one bg-red-100 two", "bg", "blue", 500)
-"bg-red-100"
-
-get(~w"one bg-red two", "bg", "blue", 500)
-"bg-red-500"
-
-get(~w"one two", "bg", "blue", 500)
-"bg-blue-500"
-```
-
-This means that we can **OVERIDE** the default color and tint by passing in a class name that starts with the prefix. This works for any standard tailwind classname that follows the `prefix-color-tint` model.  In the example button component above, the `get/4` function is looking to see if there is a classname that matches `text-color-tint`, and if there is, it uses that value, otherwise, it uses the default color and tint.
-
-Next, there's a weird `"hover:#{get(l, "bg", color, tint) |> darker(2)}"` line of code.  This is using string interpolation to build out the hover class.  The `TailColors.get/4` function we've already talked about.  But the `TailColors.darker/2` function is new.  It takes a standard tailwind class in the `prefix-color-tint` format, and the number of steps on the tailwind color tint array to use.  Here's some examples:
-```elixir
-darker("text-red-600", 2)
-"text-red-800"
-
-darker("ring-red-600", 8)
-"ring-red-950"
-```
-Notice when we try to step past the darkest shade, it just returns the darkest shade available.  As you can probably guess, there's also a `TailColors.lighter/2` function that works the same way.
-
-Finally, there's the `TailColors.invert/1` function.  This function takes a tailwind prefix-color-tint class, and returns the inverted color tint class.  For example:
-```elixir
-invert("text-red-600")
-"text-red-50"
-
-invert("text-red-100")
-"text-red-500"
-```
-The `invert/1` function is primarily used to invert the text color for better readability.
+This means that we can **OVERIDE** the default color by passing in a class name that starts with the prefix. This works for any standard tailwind classname that follows the `prefix-color-tint` model.  In the example button component above, the `get_color/3` function is looking to see if there is a classname that matches `text-color-tint`, and if there is, it uses that value, otherwise, it uses the default color provided.
 
 At the bottom of the `parse/1` function, there are several `clean` functions.  These functions remove classnames from the class string to avoid polluting the class string.  For instance, once we've identified the "outline" style, we don't want "outline" to appear in our class string, on the off chance that somewhere else, there is an "outline" css class.  However, we may want that, so you can choose to use the clean functions or not.
 
 `TailColors.clean/2` takes the class string, and a list of classnames to remove from the class string.  `TailColors.clean_prefix/2` takes the class string, and a list of prefixes to remove from the class string.  `TailColors.clean_colors/1` takes the class string, and removes any stand alone color classes from the class string.
 
 I would recommend using the `TailColors.clean_prefix/2` function if you are using any interpolated classes, such as "hover:bg-red-600" where the color and tint are provided in the "bg-red-600" in the class name.  Otherwise, you'll end up with "hover:bg-red-600 bg-red-600" in your class string, which will cause the background to always be red! instead of just on hover.
-
-## HELP! I'm not seeing my changes take effect!
-
-Tailwind looks for known classes to appear in your application's source code.  However, our source code is using dynamically generated class names.  So tailwind doesn't know to include it in the final css file.  To fix this, we need to add the following to our tailwind.config.js file:
-```js
-safelist: [
-  "text-red-600",
-  "ring-blue-400",
-  "hover:ring-blue-600",
-  ...
-]
-```
-**@@TODO**:
-- [ ] Create a mix task that will automatically generate a list of all the classes that are used in your application for the safelist setting.
-- [ ] Create a mix task that will take a directory and do a find and replace inside any class attributes so you can replace a color setting across your entire application.
 
 ## License
 
