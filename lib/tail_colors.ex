@@ -31,6 +31,16 @@ defmodule TailColors do
   @tints [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]
 
   @doc ~S"""
+  utiltity function to print the colors to confirm that the colors from config are being loaded
+  ## Examples
+      iex> TailColors.print_colors()
+      ["slate", "gray", "zinc", "neutral", "stone", "red", "orange", "amber", "yellow", "lime", "green", "emerald", "teal", "cyan", "sky", "blue", "indigo", "violet", "purple", "fuchsia", "pink", "rose", "multi-dash-color-name"]
+  """
+  def print_colors do
+    IO.inspect(@colors)
+  end
+
+  @doc ~S"""
   takes list of classNames and prefix text, and finds first instance
   that matches with a known color and tint, a default value should also be set
   ## Examples
