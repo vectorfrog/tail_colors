@@ -5,7 +5,8 @@ defmodule TailColors.Mixfile do
   @version "0.2.0"
 
   @deps [
-    {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
+    {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
+    {:twix, git: "https://github.com/vectorfrog/twix"}
   ]
 
   # ------------------------------------------------------------

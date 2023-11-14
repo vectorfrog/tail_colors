@@ -32,11 +32,11 @@ tail_colors: "~> 0.1.0"
 ```
 ## Config
 
-If you are using custom colors in your tailwind.config.js file, (and I strongly recommend that you do and use themeable names like "primary", "secondary", "accent", "success", "error"...etc) you can add those colors so they will identified as colors to identify in your class names:
+Tailcolors uses a fork of the excellent [Twix library](https://github.com/vectorfrog/twix).  If you are using custom colors in your tailwind.config.js file, (and I strongly recommend that you do and use themeable names like "primary", "secondary", "accent", "success", "error"...etc) you can add those colors so they will identified as colors to identify in your class names:
 ```elixir
 import Config
 
-config :tail_colors,
+config :twix,
   colors: [
     "primary",
     "secondary",
@@ -51,11 +51,11 @@ config :tail_colors,
 
 ## Usage
 
-TailColors provides a few functions to help you build out your own components where you pass in data through the class attribute.  For example, if you want to build a button component, you can pass in the color, style, and size of the button through the class attribute, and then use TailColors to parse out the data, and modify the classes.
+TailColors provides a few functions to help you build out your own components where you pass in data through the class attribute.  For example, if you want to build a button component, you can pass in the style, and size of the button through the class attribute, and then use TailColors to parse out the data, and modify the classes.
 
 #### home_live.html.leex
 ```
-<.button class="box xl">Hello</.button>
+<.button class="outline xl">Hello</.button>
 ```
 #### lib/my_app_web/components/button.ex
 ```
@@ -70,71 +70,121 @@ defmodule MyApp.Button do
   slot :inner_block, required: true
   def button(assigns) do
     ~H"""
-    <button class={parse_class(@class)} {@rest}>
+    <button class={tw([size(@class), style(@class), clean(@class, @sizes ++ @styles)])} {@rest}>
       <%= render_slot(@inner_block) %>
     </button>
     """
   end
 
-  defp parse_class(class_str) do
-    l = String.split(class_str, ~r/\s+/)
+  def size("xs"), do: "px-2.5 py-1.5 text-xs"
+  def size("sm"), do: "px-3 py-2 text-sm"
+  def size("md"), do: "px-4 py-2 text-md"
+  def size("lg"), do: "px-4 py-2 text-lg"
+  def size("xl"), do: "px-6 py-3 text-xl"
+  def size(class), do: get(class, @sizes, "md")
 
-    size = get(l, @sizes, "md")
-    style = get(l, @styles, "classic")
-
-    [case size do
-      "xs" -> "px-2.5 py-1.5 text-xs"
-      "sm" -> "px-3 py-2 text-sm"
-      "md" -> "px-4 py-2 text-md"
-      "lg" -> "px-4 py-2 text-lg"
-      "xl" -> "px-6 py-3 text-xl"
-    end]
-    ++
-    case style do
-      "classic" ->
-        [
-          get_color(l, "bg", "bg-red-600"),
-          get_color(l, "hover:bg", "bg-red-700"),
-          get_color(l, "ring", "ring-red-700"),
-          get_color(l, "text", "text-white")
-        ]
-      "outline" ->
-        [
-          get_color(l, "hover:bg", "hover:bg-red-50"),
-          get_color(l, "text", "text-red-600"),
-          get_color(l, "ring", "ring-red-700"),
-          "border #{get_color(l, "border", "border-red-600")}",
-        ]
-    end
-    ++ [
-          clean(class_str, @sizes ++ @styles)
-          |> clean_prefix(~w"bg text, ring")
-          |> clean_colors()
-    ]
-  end
+  def style("classic"), do: "bg-red-600 hover:bg-red-700 ring-red-700 text-white"
+  def style("outline"), do: "hover:bg-red-50 ring-red-700 text-red-600 border border-red-600"
+  def style(class), do: get(class, @sizes, "classic")
 end
 ```
 
-OK, let's walk through that together.  At the top of the module, we import TailColors, and set the accepted options for size and styles.  We also set the default_color to pull from the primary attribute from the config.  Finally, we set the default_tint.
+OK, let's walk through that together.  At the top of the module, we import TailColors, and set the accepted options for size and styles.
 
-Next, we have a standard button component, however, in the class attribute, we're calling the parse_class function, and passing in the class string.
+Next, we have a standard button component, however, in the class attribute, we're calling the `tw/1` function, which is provided by twix, and will merge the list of classes that we pass in with the default classes that we define in the `button/1` function.  This allows us to override any of the default styles with any classes that are explicitly set in the class attribute.
 
-The parse_class function is where all of our major logic lies. We create a list out of the class_str.  Technically speaking, each of the functions in TailColors can accept either a string or a list, however, since all the functions just convert the string into a list anyways, we'll save ourselves some cpu's and just pass in the list.
+We create a list inside the `tw/1` function.  This simply will add spaces between each item in the list.  The first item in the list is the `size/1` function, the second item is the `style/1` function, and the third item is the `clean/2` function.  The `clean/2` function will remove both the style and the size values from the class string. This is a good practice to avoid polluting the class string with values that are no longer needed, or worse, might alter the display of the element unintentionally.
 
-This is where things start to get interesting.  We use the `TailColors.get/3` function to find out if any of the known sizes defined in *@sizes is present in the class list.  If it is, we set the size variable to that value, otherwise, we set it to the default value that's passed in the third parameter, in this case: "md".  We do the same thing for style, except we look for the values in @styles.
+For both the `size/1` and `style/1` functions, we simply pattern match against the class string, and return the appropriate value.  If the class string doesn't match any of the patterns, the last function parses the class string using the `get/3` function to determine if the class string has any of the values defined in the @sizes or @styles module attributes. If the class string doesn't contain any of the accepted values, then a default value is used.
 
-Next, we start building out the list of strings that we are going to return.  The `case` statement around size is pretty self-explanatory.  However, the case for style is way more interesting.
+Now let's take a look at another example that uses nested elements to create a more complex component.
 
-`TailColors.get_color/3` function takes the class list, a prefix to use as an identifier and a default value.  The function will then search through the class list looking for any classes that start with the prefix, if it finds the prefix, it returns the full class name: `prefix-color-tint`.  If it doesn't find the prefix, it returns the default value.  Here are a few examples:
+```elixir
+<.card class="box bg-gray-50 title-text-xl content-text-blue-800">
+  <:title>My Example Card</:title>
+  This is an example Card!  It has a title, and some content.
+</.card>
+```
 
-This means that we can **OVERIDE** the default color by passing in a class name that starts with the prefix. This works for any standard tailwind classname that follows the `prefix-color-tint` model.  In the example button component above, the `get_color/3` function is looking to see if there is a classname that matches `text-color-tint`, and if there is, it uses that value, otherwise, it uses the default color provided.
+```elixir
+defmodule RentalsWeb.LayoutComponents.Card do
+  import TailColors
+  use Phoenix.Component
 
-At the bottom of the `parse/1` function, there are several `clean` functions.  These functions remove classnames from the class string to avoid polluting the class string.  For instance, once we've identified the "outline" style, we don't want "outline" to appear in our class string, on the off chance that somewhere else, there is an "outline" css class.  However, we may want that, so you can choose to use the clean functions or not.
+  @styles ~w(box rounded)
+  @elements ~w(title content actions)
 
-`TailColors.clean/2` takes the class string, and a list of classnames to remove from the class string.  `TailColors.clean_prefix/2` takes the class string, and a list of prefixes to remove from the class string.  `TailColors.clean_colors/1` takes the class string, and removes any stand alone color classes from the class string.
+  attr :class, :string, default: nil
+  attr :rest, :global, include: ~w(disabled form name value)
+  slot :inner_block, required: true
+  slot :title, required: false
+  def card(assigns) do
+    ~H"""
+    <div class={tw(["relative flex flex-col", style(@class), clean_class(@class)])} {@rest}>
+      <div class="p-4 flex flex-col gap-4">
+        <h2 class={tw(["flex bold text-2xl -mb-8", get_prefix(@class, "title")])}>
+          <%= render_slot(@title) %>
+        </h2>
 
-I would recommend using the `TailColors.clean_prefix/2` function if you are using any interpolated classes, such as "hover:bg-red-600" where the color and tint are provided in the "bg-red-600" in the class name.  Otherwise, you'll end up with "hover:bg-red-600 bg-red-600" in your class string, which will cause the background to always be red! instead of just on hover.
+        <div class={get_prefix(@class, "content")}>
+          <%= render_slot(@inner_block) %>
+        </div>
+      </div>
+    </div>
+    """
+  end
 
+  defp clean_class(class), do: clean(class, @styles) |> clean_prefix(@elements)
+
+  def style("box"), do: ""
+  def style("rounded"), do: "rounded-md"
+  def style(class), do: style(get(class, @styles, "rounded"))
+end
+```
+
+In the example above, we have a more complex components that has both a title slot and a content slot.  We are again using a list of style names, "box" and "rounded", that will determine the corners of the card.  However, if something like "rounded-2xl" were passed in the class string, that would override the default "rounded-md" value.
+
+We also have a list of elements that we use to determine the class names for the title and content slots.  If the class string starts with "title-", then the div that wraps the title slot will add that class to the div using the `get_prefix/2` function.  In the example above, the "title-text-xl" will override the default "text-2xl" value.
+
+The "content-text-blue-800" will be transformed into "text-blue-800" and added to the div that wraps the inner_block slot.
+
+The `get_prefix/2` function gives us an easy way to style nested elements without having to create a bunch of props.  It also keeps all of the styling information in the class attribute, which makes it easier to see what styles are being applied.
+
+Finally, we are using the `clean/2` function to remove all the style and element prefixes from the class string.  So the final result will be:
+
+```html
+    <div class="relative flex flex-col">
+      <div class="p-4 flex flex-col gap-4">
+        <h2 class="flex bold text-xl -mb-8">
+          My Example Card
+        </h2>
+
+        <div class="text-blue-800">
+          This is an example Card!  It has a title, and some content.
+        </div>
+      </div>
+    </div>
+```
+
+#### Hey! I don't see my classes take effect!
+
+Tailwind searches files for known class names.  Unfortunately, it doesn't recognize class names that are dynamically generated.  So it won't identify "content-text-blue-800" even though that will get transformed to "text-blue-800" later on. You will need to add any dynamically generated class names to your tailwind.config.js file.  For the example above, you would add the following to your tailwind.config.js:
+```javascript
+module.exports = {
+  ...,
+  safelist: ["text-blue-800"]
+}
+```
+
+If that's too much work, you can do the lazy dev's approach and just throw a commented html string into your call to the component:
+```elixir
+<!-- text-blue-800 -->
+<.card class="box bg-gray-50 title-text-xl content-text-blue-800">
+  <:title>My Example Card</:title>
+  This is an example Card!  It has a title, and some content.
+</.card>
+```
+A good workflow is to use the HTML comments during development, and then before you publish, do a quick search for all the comments and add them to your tailwind.config.js file's safelist.
 ## License
 
 MIT License
